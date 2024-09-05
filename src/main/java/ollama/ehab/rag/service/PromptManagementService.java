@@ -46,21 +46,13 @@ public class PromptManagementService {
         this.chatHistoryLog.computeIfAbsent(chatId, key -> new ArrayList<>()).add(message);
     }
 
-    public Message getSystemMessage(String chatId, String message) {
+    public Message getSystemMessage(String message) {
         List<Document> similarDocuments = this.vectorStore.similaritySearch(message);
-        List<Message> conversationHistory = this.chatHistoryLog.get(chatId);
 
-        String history = conversationHistory.stream()
-                .map(m -> m.getMessageType().name().toLowerCase() + ": " + m.getContent())
-                .collect(Collectors.joining(System.lineSeparator()));
         String documents = similarDocuments.stream().map(Document::getContent)
                 .collect(Collectors.joining(System.lineSeparator()));
 
-        Map<String, Object> prepareHistory = Map.of(
-                "documents", documents,
-                "current_date", java.time.LocalDate.now(),
-                "history", history
-        );
+        Map<String, Object> prepareHistory = Map.of("documents", documents);
         System.out.println("PREPARE HISTORY");
         prepareHistory.forEach((key, value) -> {
             System.out.println(key + ": " + value);
