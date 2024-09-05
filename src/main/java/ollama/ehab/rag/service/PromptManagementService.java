@@ -50,7 +50,7 @@ public class PromptManagementService {
 
     public Message getSystemMessage(String message) {
         SearchRequest request = SearchRequest.defaults()
-                .withTopK(20)
+                .withTopK(30)
                 .withQuery(message)
                 .withSimilarityThreshold(0.3);
         List<Document> similarDocuments = this.vectorStore.similaritySearch(request);

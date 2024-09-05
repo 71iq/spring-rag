@@ -93,8 +93,18 @@ public class Config {
             XWPFDocument docx = new XWPFDocument(fis);
             String fileName = docxPath.getFileName().toString().split("\\.")[0];
             var doc = new ArrayList<Document>();
-            for (XWPFParagraph paragraph : docx.getParagraphs())
-                doc.add(new Document(fileName + " " + paragraph.getText()));
+            StringBuilder para = new StringBuilder();
+            for (XWPFParagraph paragraph : docx.getParagraphs()) {
+                if (para.isEmpty())
+                    para.append(fileName).append(" ");
+                para.append(paragraph.getText()).append(" ");
+                if (para.length() > 500) {
+                    doc.add(new Document(para.toString()));
+                    para = new StringBuilder(fileName);
+                }
+            }
+            if (!para.isEmpty())
+                doc.add(new Document(para.toString()));
             System.out.println(doc.stream().map(Document::getContent).collect(Collectors.joining("\nNEW ROW ")));
             TokenTextSplitter tokenTextSplitter = new TokenTextSplitter();
             vectorStore.add(tokenTextSplitter.apply(doc));
@@ -109,15 +119,32 @@ public class Config {
             PagePdfDocumentReader documentReader = new PagePdfDocumentReader(pdfResource);
             String fileName = pdfPath.getFileName().toString().split("\\.")[0];
             List<Document> documents = documentReader.get();
+            List<Document> splitDocuments = new ArrayList<>();
+            final int maxChunkLength = 500;
 
-            List<Document> modifiedDocuments = documents.stream()
-                    .map(document -> new Document(fileName + " " + document.getContent()))
-                    .collect(Collectors.toList());
+            for (Document document : documents) {
+                String content = document.getContent().trim();
 
-            System.out.println(modifiedDocuments.stream().map(Document::getContent).collect(Collectors.joining("\nNEW ROW ")));
+                if (!content.isEmpty()) {
+                    int start = 0;
+                    while (start < content.length()) {
+                        int end = Math.min(start + maxChunkLength, content.length());
+
+                        if (end < content.length() && !Character.isWhitespace(content.charAt(end))) {
+                            int lastSpace = content.lastIndexOf(" ", end);
+                            if (lastSpace > start)
+                                end = lastSpace;
+                        }
+                        splitDocuments.add(new Document(fileName + " " + content.substring(start, end).trim()));
+                        start = end;
+                    }
+                }
+            }
+
+            System.out.println(splitDocuments.stream().map(Document::getContent).collect(Collectors.joining("\nNEW ROW ")));
 
             TokenTextSplitter tokenTextSplitter = new TokenTextSplitter();
-            vectorStore.add(tokenTextSplitter.apply(modifiedDocuments));
+            vectorStore.add(tokenTextSplitter.apply(splitDocuments));
         } catch (Exception e) {
             e.printStackTrace();
         }
