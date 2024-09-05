@@ -22,6 +22,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -73,8 +74,9 @@ public class Config {
             for (CSVRecord record : csvParser) {
                 StringBuilder con = new StringBuilder();
                 for (String title : csvParser.getHeaderNames())
-                    con.append(title).append(" ").append(record.get(title).isEmpty() ? " NONE " : record.get(title)).append(", ");
-                rows.add(new Document(record.get(1) + "-" + con));
+                    if (!(record.get(title).isEmpty() || record.get(title).isBlank()))
+                        con.append(title).append(": ").append(record.get(title)).append(", ");
+                rows.add(new Document(csvPath.getFileName().toString().split("\\.")[0] + " on date: " + record.get(1) + " - " + con));
             }
             System.out.println(rows.stream().map(Document::getContent).collect(Collectors.joining("\nNEW ROW ")));
             csvParser.close();
@@ -89,10 +91,11 @@ public class Config {
     public void processDocx(Path docxPath) {
         try (FileInputStream fis = new FileInputStream(docxPath.toFile())) {
             XWPFDocument docx = new XWPFDocument(fis);
+            String fileName = docxPath.getFileName().toString().split("\\.")[0];
             var doc = new ArrayList<Document>();
             for (XWPFParagraph paragraph : docx.getParagraphs())
-                doc.add(new Document("Paragraph: " + paragraph.getText() + "\n"));
-            System.out.println(doc.stream().map(Document::getContent).collect(Collectors.joining(", ")));
+                doc.add(new Document(fileName + " " + paragraph.getText()));
+            System.out.println(doc.stream().map(Document::getContent).collect(Collectors.joining("\nNEW ROW ")));
             TokenTextSplitter tokenTextSplitter = new TokenTextSplitter();
             vectorStore.add(tokenTextSplitter.apply(doc));
         } catch (IOException e) {
@@ -104,9 +107,17 @@ public class Config {
         try {
             Resource pdfResource = resourceLoader.getResource("classpath:data/" + pdfPath.getFileName().toString());
             PagePdfDocumentReader documentReader = new PagePdfDocumentReader(pdfResource);
-            System.out.println(documentReader.get().stream().map(Document::getContent).collect(Collectors.joining(", ")));
+            String fileName = pdfPath.getFileName().toString().split("\\.")[0];
+            List<Document> documents = documentReader.get();
+
+            List<Document> modifiedDocuments = documents.stream()
+                    .map(document -> new Document(fileName + " " + document.getContent()))
+                    .collect(Collectors.toList());
+
+            System.out.println(modifiedDocuments.stream().map(Document::getContent).collect(Collectors.joining("\nNEW ROW ")));
+
             TokenTextSplitter tokenTextSplitter = new TokenTextSplitter();
-            vectorStore.add(tokenTextSplitter.apply(documentReader.get()));
+            vectorStore.add(tokenTextSplitter.apply(modifiedDocuments));
         } catch (Exception e) {
             e.printStackTrace();
         }

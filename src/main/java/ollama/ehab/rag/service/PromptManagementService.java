@@ -2,6 +2,7 @@ package ollama.ehab.rag.service;
 
 import org.springframework.ai.chat.prompt.SystemPromptTemplate;
 import org.springframework.ai.document.Document;
+import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
@@ -14,6 +15,7 @@ import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.MessageType;
 import org.springframework.util.CollectionUtils;
 
+import javax.naming.directory.SearchResult;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -47,7 +49,11 @@ public class PromptManagementService {
     }
 
     public Message getSystemMessage(String message) {
-        List<Document> similarDocuments = this.vectorStore.similaritySearch(message);
+        SearchRequest request = SearchRequest.defaults()
+                .withTopK(20)
+                .withQuery(message)
+                .withSimilarityThreshold(0.3);
+        List<Document> similarDocuments = this.vectorStore.similaritySearch(request);
 
         String documents = similarDocuments.stream().map(Document::getContent)
                 .collect(Collectors.joining(System.lineSeparator()));
