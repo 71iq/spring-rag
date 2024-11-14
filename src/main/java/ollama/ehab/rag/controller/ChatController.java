@@ -18,6 +18,7 @@ public class ChatController {
 
     @GetMapping("/chat")
     public String chat(@RequestParam(value = "message", defaultValue = "give me summary of all employees") String message) {
+        System.out.println("MESSAGE: "  + message);
         String ret =
         chatService.chat(chatId, message)
                 .getResults()

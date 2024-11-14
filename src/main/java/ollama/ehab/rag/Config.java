@@ -100,7 +100,7 @@ public class Config {
                 para.append(paragraph.getText()).append(" ");
                 if (para.length() > 500) {
                     doc.add(new Document(para.toString()));
-                    para = new StringBuilder(fileName);
+                    para = new StringBuilder(fileName).append(" ");
                 }
             }
             if (!para.isEmpty())
